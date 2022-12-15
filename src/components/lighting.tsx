@@ -83,15 +83,81 @@ export const Lighting = (scene: THREE.Scene): void => {
 };
 
 export const LightingMobile = (scene: THREE.Scene): void => {
-  const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1);
-  hemiLight.position.set(0, 3, 0);
+  const hemiLight = new THREE.HemisphereLight(0xddeeff, 0x0f0e0d, 1);
+  hemiLight.position.set(0, 3, -0.5);
+  // hemiLight.intensity = 1000;
   scene.add(hemiLight);
   scene.add(new THREE.HemisphereLightHelper(hemiLight, 0.2));
-  const sp = new THREE.SpotLight(0xffffff, 1.5);
-  sp.position.set(0, 3, 0);
-  sp.angle = Math.PI / 7;
-  sp.penumbra = 1;
-  sp.decay = 1;
-  sp.distance = 10;
-  scene.add(sp);
+};
+
+export const LightingV2 = (scene: THREE.Scene): void => {
+  const hemiLight = new THREE.HemisphereLight(0xddeeff, 0x0f0e0d, 0.02);
+  hemiLight.position.set(0, 10, 0);
+  hemiLight.intensity = 1.5;
+  scene.add(hemiLight);
+  scene.add(new THREE.HemisphereLightHelper(hemiLight, 0.2, "white"));
+
+  const bulbLightR = new THREE.PointLight(0xddeeff, 1, 100, 2);
+  bulbLightR.power = 400;
+  bulbLightR.distance = 5;
+  bulbLightR.intensity = 1;
+  bulbLightR.position.set(2.5, 2.8, -3);
+  scene.add(bulbLightR);
+  scene.add(new THREE.PointLightHelper(bulbLightR, 0.2));
+
+  const bulbLightC = new THREE.PointLight(0xddeeff, 1, 100, 2);
+  bulbLightC.power = 400;
+  bulbLightC.distance = 5;
+  bulbLightC.intensity = 1;
+  bulbLightC.position.set(0, 2.8, -3);
+  scene.add(bulbLightC);
+  scene.add(new THREE.PointLightHelper(bulbLightC, 0.2));
+
+  const bulbLightL = new THREE.PointLight(0xddeeff, 1, 100, 2);
+  bulbLightL.power = 400;
+  bulbLightL.distance = 5;
+  bulbLightL.intensity = 1;
+  bulbLightL.position.set(-2.5, 2.8, -3);
+  scene.add(bulbLightL);
+  scene.add(new THREE.PointLightHelper(bulbLightL, 0.2));
+
+  const bulbLightLC = new THREE.PointLight(0xddeeff, 1, 100, 2);
+  bulbLightLC.power = 400;
+  bulbLightLC.distance = 5;
+  bulbLightLC.intensity = 1;
+  bulbLightLC.position.set(-2.5, 2.8, -1);
+  scene.add(bulbLightLC);
+  scene.add(new THREE.PointLightHelper(bulbLightLC, 0.2));
+
+  const bulbLightRC = new THREE.PointLight(0xddeeff, 1, 100, 2);
+  bulbLightRC.power = 400;
+  bulbLightRC.distance = 5;
+  bulbLightRC.intensity = 1;
+  bulbLightRC.position.set(2.5, 2.8, -1);
+  scene.add(bulbLightRC);
+  scene.add(new THREE.PointLightHelper(bulbLightRC, 0.2));
+
+  const bulbLightRF = new THREE.PointLight(0xddeeff, 1, 100, 2);
+  bulbLightRF.power = 400;
+  bulbLightRF.distance = 5;
+  bulbLightRF.intensity = 1;
+  bulbLightRF.position.set(2.5, 2.8, 1);
+  scene.add(bulbLightRF);
+  scene.add(new THREE.PointLightHelper(bulbLightRF, 0.2));
+
+  const bulbLightLF = new THREE.PointLight(0xddeeff, 1, 100, 2);
+  bulbLightLF.power = 400;
+  bulbLightLF.distance = 5;
+  bulbLightLF.intensity = 1;
+  bulbLightLF.position.set(-2.5, 2.8, 1);
+  scene.add(bulbLightLF);
+  scene.add(new THREE.PointLightHelper(bulbLightLF, 0.2));
+
+  const bulbLightLFC = new THREE.PointLight(0xddeeff, 1, 100, 2);
+  bulbLightLFC.power = 400;
+  bulbLightLFC.distance = 5;
+  bulbLightLFC.intensity = 1;
+  bulbLightLFC.position.set(0, 2.8, 1);
+  scene.add(bulbLightLFC);
+  scene.add(new THREE.PointLightHelper(bulbLightLFC, 0.2));
 };

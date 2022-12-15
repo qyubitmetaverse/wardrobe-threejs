@@ -8,7 +8,7 @@ interface iListOutfit {
 }
 
 class ListOutfit {
-  public data: iListOutfit[] = [
+  public outfitFemale: iListOutfit[] = [
     //outfit girl 01
     {
       _id: `${new Date().getTime()}`,
@@ -92,6 +92,8 @@ class ListOutfit {
       pathImg: "/images/item/shoes/shoes_ou3.png",
     },
   ];
+
+  public outfitMale: iListOutfit[] = [];
 }
 
 export default new ListOutfit();

@@ -21,7 +21,7 @@ const Play: NextPage = () => {
   return (
     <div className="w-screen h-screen">
       {/* <WardrobeMobile /> */}
-      <WardrobeComponent />{" "}
+      <WardrobeComponent />
       {/* <div className="w-[60%] h-3 border rounded-2xl relative" onClick={changeLoading}>
         <div
           className={`h-full transition-all duration-1000 bg-blue-600 rounded-2xl top-0`}

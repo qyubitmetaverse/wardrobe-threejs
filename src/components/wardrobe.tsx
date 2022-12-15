@@ -1,9 +1,9 @@
 import { FC, useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
-import { LoadCharacter, LoadRoom, LoadSkin, LoadTest } from "../lib/fbxLoaders";
 import Stats from "three/examples/jsm/libs/stats.module";
+import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
+import { LoadRoom, LoadSkin } from "../lib/fbxLoaders";
 
 //====================== start ui icon component ======================//
 import { ArrowLongLeftIcon, HomeIcon, MagnifyingGlassIcon, ShoppingCartIcon } from "@heroicons/react/24/solid";
@@ -20,128 +20,115 @@ import { OutfitItems } from "./wardrobe/OutfitItems";
 
 //====================== Cannon Js Gravity ======================//
 import * as CANNON from "cannon-es";
-import { Lighting } from "./lighting";
+import { LightingV2 } from "./lighting";
 import { Female, Male } from "./wardrobe/icons/CharacterIcon";
+import { iAnimation, iCharacter, iDataAnimation, iDataCharacter, iMixer, iSkins } from "./wardrobe.interface";
+import { LoadCharacter } from "../lib/CharacterLoader";
+import ListCharacterExample from "../models/ListCharacter.example";
 
-export interface iSkins {
-  _id: string;
-  name: string;
-  type: string;
-  pathImg: string;
-  model: THREE.SkinnedMesh;
-}
 const Wardrobe: FC = () => {
   const [navActive, setNavActive] = useState<string>("all");
   const refBody = useRef<HTMLDivElement>(null);
   const [scene] = useState(new THREE.Scene());
   const [camera] = useState(new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000));
-  const [renderer] = useState(new THREE.WebGLRenderer({ antialias: true, alpha: true }));
-
+  const [renderer] = useState(
+    new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" })
+  );
   //======================= start initial game context =======================//
   const [loading, setLoading] = useState<number>(100);
-  const [animationAction, setAnimationAction] = useState<THREE.AnimationAction[]>([]);
-  const [activeAction, setActiveAction] = useState<THREE.AnimationAction | undefined>();
-  const [lastAction, setLastAction] = useState<THREE.AnimationAction | undefined>();
-  //======================= end initial game context =======================//
-  let mixer: THREE.AnimationMixer;
-  let CharacterMesh: THREE.Object3D<THREE.Event>;
-  let CharacterBody: CANNON.Body;
-  let characterIsReady = false;
+  const [skins, setSkins] = useState<iSkins[]>([]);
+  const [filterSkins, setFilterSkins] = useState<iSkins[]>([]);
+  const [characterActive, setCharacterActive] = useState<string>("character-male");
+  const videoElement = useRef<HTMLVideoElement>(null);
+  const [Animation, SetAnimation] = useState<THREE.Group>();
+  const [animationIsReady, setAnimationIsReady] = useState<boolean>(false);
+  let mixers: THREE.AnimationMixer[] = [];
 
   const LoadAnimation = (path: string) => {
     const fbxLoader = new FBXLoader();
-    fbxLoader.load(
-      path,
-      (model) => {
-        if (mixer) {
-          const animationAct = mixer.clipAction((model as THREE.Object3D).animations[0]);
-          setAnimationAction((act) => [...act, animationAct]);
-        }
-      },
-      (xhr) => {
-        console.log((xhr.loaded / xhr.total) * 100 + "% animation loaded");
-        console.log("Character is ready");
-        setL(false);
-      },
-      (err) => console.log(err)
-    );
-  };
-
-  const setAction = (toAction: THREE.AnimationAction) => {
-    if (activeAction) {
-      if (toAction !== activeAction) {
-        activeAction.reset();
-        activeAction.stop();
-        setActiveAction(toAction);
-      }
-    } else {
-      setActiveAction(toAction);
-    }
-  };
-
-  useEffect(() => {
-    if (animationAction.length !== 0) {
-      setAction(animationAction[0]);
-    }
-  }, [animationAction]);
-
-  useEffect(() => {
-    if (activeAction) {
-      activeAction.reset();
-      activeAction.play();
-    }
-  }, [activeAction, lastAction]);
-
-  useEffect(() => {
-    let req: any = null;
-    const clock = new THREE.Clock();
-    camera.position.set(0, 1.5, 2.5);
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    // renderer.domElement
-    refBody.current?.appendChild(renderer.domElement);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    // lights
-    Lighting(scene);
-    LoadRoom(scene, "/assets/env/room_test.fbx");
-    LoadCharacter(scene, "/assets/characters/chara_girl_ou1_test.fbx", (xhr) => {
-      setP((xhr.loaded / xhr.total) * 100);
-    }).then((model) => {
-      mixer = new THREE.AnimationMixer(model);
-      scene.add(model);
-      LoadAnimation("/assets/animations/orc_Idle.fbx");
-      // LoadAnimation("/assets/animations/damba_dancing.fbx");
-      animate();
+    return new Promise<THREE.Group>((resolve, reject) => {
+      fbxLoader.load(
+        path,
+        (model) => {
+          resolve(model);
+          SetAnimation(model);
+          setAnimationIsReady(true);
+        },
+        (xhr) => {
+          console.log((xhr.loaded / xhr.total) * 100 + "% animation loaded");
+        },
+        (err) => console.log(err)
+      );
     });
+  };
 
-    const stats = Stats();
-    // stats.domElement.style.cssText = "position:absolute;top:0rem;left:0px;z-index:200px";
-    document.body.appendChild(stats.domElement);
-    scene.background = new THREE.Color(0xa0a0a0);
-    scene.fog = new THREE.Fog(0xa0a0a0, 10, 50);
+  const [listCharacter, setListCharacter] = useState<iCharacter[]>([]);
+  let req: any = null;
+  const clock = new THREE.Clock();
+  let stats: Stats = Stats();
+  useEffect(() => {
+    LoadAnimation("/assets/animations/orc_idle.fbx");
+  }, []);
 
+  useEffect(() => {
+    if (animationIsReady) {
+      renderer.outputEncoding = THREE.sRGBEncoding;
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.toneMappingExposure = 0;
+      refBody.current?.appendChild(renderer.domElement);
+      camera.position.set(0, 3, 1.8);
+      // lights
+      LightingV2(scene);
+
+      ListCharacterExample.data.map((chara, idx) => {
+        LoadCharacter(chara).then((model) => {
+          model.position.set(-0.19, 0.25, 0);
+          const data: iCharacter = {
+            _id: `${Math.random()}`,
+            name: chara.name,
+            pathImg: chara.pathImg,
+            model: model,
+          };
+          setListCharacter((old) => [...old, data]);
+          model.name = chara.name;
+          const mixer = new THREE.AnimationMixer(model);
+          const animAct = mixer.clipAction((Animation as THREE.Object3D).animations[0]);
+          animAct.timeScale = 1;
+          animAct.play();
+          mixers.push(mixer);
+          console.log(model);
+
+          if (chara.isActive) scene.add(model);
+          if (idx + 1 === ListCharacterExample.data.length) animate();
+        });
+      });
+
+      if (videoElement) {
+        LoadRoom(scene, "/assets/env/room_v2/room-fix.fbx", videoElement.current);
+      }
+    }
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enablePan = false;
+    controls.enablePan = true;
     controls.enableZoom = true;
     controls.enableRotate = true;
-    controls.minPolarAngle = controls.maxPolarAngle = 1.37079;
+    controls.minPolarAngle = controls.maxPolarAngle = 1.41079;
     controls.minDistance = 1;
     controls.maxDistance = 3;
     controls.target.set(0, 1, 0);
     controls.update();
 
     function animate() {
-      req = requestAnimationFrame(animate);
-      if (mixer) {
-        mixer.update(clock.getDelta());
-      }
+      const delta = clock.getDelta();
+      for (const m of mixers) m.update(delta);
       stats.update();
       renderer.render(scene, camera);
+      req = requestAnimationFrame(animate);
     }
     return () => {
       cancelAnimationFrame(req);
-      renderer.dispose();
     };
-  }, []);
+  }, [animationIsReady]);
 
   const handleWindowResize = useCallback(() => {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -149,18 +136,8 @@ const Wardrobe: FC = () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
   }, [renderer]);
 
-  useEffect(() => {
-    window.addEventListener("resize", handleWindowResize, false);
-    return () => {
-      window.removeEventListener("resize", handleWindowResize, false);
-    };
-  }, [renderer, handleWindowResize]);
-
-  const [skins, setSkins] = useState<iSkins[]>([]);
-  const [filterSkins, setFilterSkins] = useState<iSkins[]>([]);
-
   const loadAllSkin = () => {
-    ListOutfitExample.data.map((i) =>
+    ListOutfitExample.outfitFemale.map((i) =>
       LoadSkin(i.pathModel, i.pathTexture).then((model: any) => {
         model.children.map((md: any) => {
           var ns = md as THREE.SkinnedMesh;
@@ -188,10 +165,6 @@ const Wardrobe: FC = () => {
     return fSkins;
   };
 
-  useEffect(() => {
-    loadAllSkin();
-  }, []);
-
   const ChangeSkin = (_id: string) => {
     const findSkin = skins.find((f) => f._id === _id);
     if (findSkin) {
@@ -215,25 +188,41 @@ const Wardrobe: FC = () => {
     }
   };
 
-  const [l, setL] = useState<boolean>(true);
-  const [p, setP] = useState<number>(0);
+  useEffect(() => {
+    window.addEventListener("resize", handleWindowResize, false);
+    return () => {
+      window.removeEventListener("resize", handleWindowResize, false);
+    };
+  }, [renderer, handleWindowResize]);
 
-  const [characterActive, setCharacterActive] = useState<string>("female");
+  const ChangeChara = () => {
+    setCharacterActive((c) => (c === "character-female" ? "character-male" : "character-female"));
+    scene.children.map((c, idx) => {
+      if (c.name.includes("character")) {
+        if (characterActive === "character-female") {
+          let newChara = listCharacter.find((f) => f.name.includes("character-male"));
+          if (newChara) {
+            scene.remove(c);
+            scene.add(newChara.model);
+          }
+        } else {
+          let newChara = listCharacter.find((f) => f.name.includes("character-female"));
+          if (newChara) {
+            scene.remove(c);
+            scene.add(newChara.model);
+          }
+        }
+      }
+    });
+  };
 
   return (
-    <GameContext.Provider
-      value={{
-        loading,
-        setLoading,
-        animationAction,
-        setAnimationAction,
-        activeAction,
-        setActiveAction,
-        lastAction,
-        setLastAction,
-      }}
-    >
-      <div
+    <GameContext.Provider value={{ loading, setLoading }}>
+      <video id="video" loop muted crossOrigin="anonymous" playsInline ref={videoElement} style={{ display: "none" }}>
+        <source src="/videoPortfolio.mp4" />
+      </video>
+      {/* <video src="/video-math.mp4" className="bg-red-500" style={{ display: "none" }} loop autoPlay playsInline></video> */}
+      {/* <div
         className={`${
           l ? `` : `hidden`
         } fixed top-0 left-0 w-screen h-screen bg-black flex items-center justify-center`}
@@ -246,7 +235,7 @@ const Wardrobe: FC = () => {
           />
           <p className="text-center font-normal text-xs mt-1 text-white">download assets</p>
         </div>
-      </div>
+      </div> */}
       <div className="h-screen w-screen relative flex flex-row items-center justify-between top-0 z-50">
         {/* {===================== unity game ======================} */}
         <div className="h-full w-full absolute z-0 overflow-hidden bg-[#36363B]" ref={refBody}>
@@ -360,21 +349,19 @@ const Wardrobe: FC = () => {
         <div
           className={`h-[32vw] [transform:perspective(1000px)_rotateY(-15deg)] w-[22%] mr-10 z-10 relative flex flex-col`}
         >
-          <div className="absolute -left-[35%] bottom-[16%] z-50 rounded p-2 text-white flex flex-row-reverse">
-            <div
-              className="bg-sky-600 shadow-2xl p-2 rounded-xl cursor-pointer"
-              onClick={() => setCharacterActive((c) => (c === "female" ? "male" : "female"))}
-            >
-              {characterActive === "female" ? <Female w="40" h="40" /> : <Male w="40" h="40" />}
-            </div>
-            <div className="mr-2">
-              {characterActive === "female" ? <Male w="20" h="20" /> : <Female w="20" h="20" />}
-            </div>
-          </div>
           <div
-            className="flex-1 w-full bg-information bg-cover bg-no-repeat flex flex-col justify-end"
+            className="flex-1 w-full bg-information bg-cover bg-no-repeat flex flex-col justify-end relative"
             style={{ backgroundSize: "100% 100%" }}
           >
+            <div
+              className="absolute bg-sky-600 w-[15%] h-[12%] -left-[19%] bottom-[0%] z-50 rounded p-2 text-white flex items-center justify-center cursor-pointer"
+              onClick={ChangeChara}
+            >
+              {characterActive.includes("character-female") ? <Female w="40" h="40" /> : <Male w="40" h="40" />}
+            </div>
+            <div className="absolute w-[15%] h-[11%] -left-[35%] bottom-[5%] z-50 rounded p-2 text-white flex items-center justify-center">
+              {characterActive.includes("character-female") ? <Male w="40" h="40" /> : <Female w="40" h="40" />}
+            </div>
             <div className="w-full h-[80%] flex flex-col pl-[12%]">
               <div className="w-full flex-1 text-white flex flex-row items-center mt-[10%]">
                 <div className="h-[80%] w-[15%] flex justify-center items-center rounded-[20%] bg-sky-600 p-[3%]">
